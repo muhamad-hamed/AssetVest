@@ -1,0 +1,92 @@
+## .NET Core
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+*.pidb
+*.booproj
+*.swp
+*.*~
+project.lock.json
+artifacts/
+publish/
+
+## Visual Studio
+.vs/
+*.rsuser
+*.userosscache
+*.sln.docstates
+*.vscode/
+
+## Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+
+## Test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+
+## Rider
+.idea/
+*.sln.iml
+
+## User-specific files
+*.userprefs
+*.suo
+*.user
+
+## Docker
+docker-compose.override.yml
+
+## Database
+*.db
+*.db-shm
+*.db-wal
+
+## Logs
+*.log
+logs/
+
+## Environment variables
+.env
+.env.local
+.env.*.local
+
+## OS files
+.DS_Store
+Thumbs.db
+
+## JetBrains Rider
+.idea/
+*.sln.DotSettings.user
+
+## Test scripts (optional - remove if you want to commit them)
+test-auth.ps1
+test-token.ps1
+
+## Debugging reports (optional)
+DEBUGGING_REPORT.md

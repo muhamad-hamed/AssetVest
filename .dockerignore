@@ -1,0 +1,50 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+*.sln.iml
+
+# Docker
+**/Dockerfile*
+**/docker-compose*
+.dockerignore
+
+# Documentation
+**/README.md
+docs/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Tests
+**/TestResults/
+
+# Dependencies
+**/node_modules/
+**/packages/
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+.env.local
+**/*.Development.json
+
+# Database
+**/*.db
+**/*.db-shm
+**/*.db-wal

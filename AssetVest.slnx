@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AssetVest.Api/AssetVest.Api.csproj" />
+    <Project Path="src/AssetVest.Application/AssetVest.Application.csproj" />
+    <Project Path="src/AssetVest.Domain/AssetVest.Domain.csproj" />
+    <Project Path="src/AssetVest.Infrastructure/AssetVest.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AssetVest.Application.Tests/AssetVest.Application.Tests.csproj" />
+    <Project Path="tests/AssetVest.Domain.Tests/AssetVest.Domain.Tests.csproj" />
+    <Project Path="tests/AssetVest.Integration.Tests/AssetVest.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

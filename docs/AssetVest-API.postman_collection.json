@@ -1,0 +1,754 @@
+{
+	"info": {
+		"_postman_id": "assetvest-api-collection",
+		"name": "AssetVest API",
+		"description": "Complete API collection for AssetVest application with JWT authentication",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{accessToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5062",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refreshToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "assetId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "annualGoalId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('accessToken', response.accessToken);",
+									"    pm.collectionVariables.set('refreshToken', response.refreshToken);",
+									"    pm.collectionVariables.set('userId', response.user.id);",
+									"    pm.test('Registration successful', () => {",
+									"        pm.expect(response.accessToken).to.be.a('string');",
+									"        pm.expect(response.user.email).to.equal('muhamaad.hamed@gmail.com');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Mohamed\",\n  \"lastName\": \"Hamed\",\n  \"email\": \"muhamaad.hamed@gmail.com\",\n  \"password\": \"H#test@2026\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "register"]
+						},
+						"description": "Register a new user account. Password must be at least 8 characters with uppercase, lowercase, number, and special character."
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('accessToken', response.accessToken);",
+									"    pm.collectionVariables.set('refreshToken', response.refreshToken);",
+									"    pm.collectionVariables.set('userId', response.user.id);",
+									"    pm.test('Login successful', () => {",
+									"        pm.expect(response.accessToken).to.be.a('string');",
+									"        pm.expect(response.expiresIn).to.equal(900);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"muhamaad.hamed@gmail.com\",\n  \"password\": \"H#test@2026\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "login"]
+						},
+						"description": "Authenticate with email and password. Returns access token (15 min) and refresh token (7 days)."
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('accessToken', response.accessToken);",
+									"    pm.collectionVariables.set('refreshToken', response.refreshToken);",
+									"    pm.test('Token refresh successful', () => {",
+									"        pm.expect(response.accessToken).to.be.a('string');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/refresh",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "refresh"]
+						},
+						"description": "Refresh access token using refresh token. Old refresh token is revoked (token rotation)."
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints for user registration, login, and token refresh"
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "users"]
+						},
+						"description": "Get all users in the system. Requires authentication."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "users", "me"]
+						},
+						"description": "Get the currently authenticated user's profile"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "users", "{{userId}}"]
+						},
+						"description": "Get user by their unique ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by Email",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/by-email/muhamaad.hamed@gmail.com",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "users", "by-email", "muhamaad.hamed@gmail.com"]
+						},
+						"description": "Get user by email address"
+					},
+					"response": []
+				},
+				{
+					"name": "Create User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.test('User created successfully', () => {",
+									"        pm.expect(response.id).to.be.a('string');",
+									"        pm.expect(response.email).to.be.a('string');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Ahmed\",\n  \"lastName\": \"Hassan\",\n  \"email\": \"ahmed.hassan@example.com\",\n  \"password\": \"Test@2026\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "users"]
+						},
+						"description": "Create a new user (admin function)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Mohamed\",\n  \"lastName\": \"Hamed Updated\",\n  \"email\": \"muhamaad.hamed@gmail.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "users", "{{userId}}"]
+						},
+						"description": "Update user information (name, email)"
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"H#test@2026\",\n  \"newPassword\": \"NewP@ss2026!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/{{userId}}/change-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "users", "{{userId}}", "change-password"]
+						},
+						"description": "Change user password. Requires current password for verification."
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle User Active Status",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/{{userId}}/toggle-active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "users", "{{userId}}", "toggle-active"]
+						},
+						"description": "Toggle user active/inactive status"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "users", "{{userId}}"]
+						},
+						"description": "Soft delete a user (sets IsDeleted flag)"
+					},
+					"response": []
+				}
+			],
+			"description": "User management endpoints"
+		},
+		{
+			"name": "Assets",
+			"item": [
+				{
+					"name": "Get All Assets",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/assets",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "assets"]
+						},
+						"description": "Get all assets for the authenticated user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Asset by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/assets/{{assetId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "assets", "{{assetId}}"]
+						},
+						"description": "Get asset by its unique ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Assets by Type - Stocks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/assets/by-type/Stocks",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "assets", "by-type", "Stocks"]
+						},
+						"description": "Get all stock assets. Asset types: Stocks, ForeignCurrency, Gold, RealEstate, Crypto, Bonds, Cash, MutualFunds, Other"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Asset - Stock",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('assetId', response.id);",
+									"    pm.test('Asset created successfully', () => {",
+									"        pm.expect(response.id).to.be.a('string');",
+									"        pm.expect(response.assetType).to.equal('Stocks');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Apple Inc. Stock\",\n  \"assetType\": \"Stocks\",\n  \"baseCurrency\": \"USD\",\n  \"initialValueEGP\": 50000.00,\n  \"currentValueEGP\": 55000.00,\n  \"notes\": \"Tech stock investment\",\n  \"stockDetail\": {\n    \"symbol\": \"AAPL\",\n    \"exchange\": \"NASDAQ\",\n    \"quantity\": 100,\n    \"averagePurchasePrice\": 150.00\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/assets",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "assets"]
+						},
+						"description": "Create a stock asset with stock-specific details"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Asset - Foreign Currency",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"USD Savings\",\n  \"assetType\": \"ForeignCurrency\",\n  \"baseCurrency\": \"USD\",\n  \"initialValueEGP\": 30000.00,\n  \"currentValueEGP\": 31500.00,\n  \"notes\": \"Emergency fund\",\n  \"currencyDetail\": {\n    \"currencyCode\": \"USD\",\n    \"amountInCurrency\": 1000.00\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/assets",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "assets"]
+						},
+						"description": "Create a foreign currency asset"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Asset - Gold",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Gold Investment\",\n  \"assetType\": \"Gold\",\n  \"baseCurrency\": \"EGP\",\n  \"initialValueEGP\": 100000.00,\n  \"currentValueEGP\": 120000.00,\n  \"notes\": \"Physical gold bars\",\n  \"goldDetail\": {\n    \"weightInGrams\": 100.0,\n    \"purity\": 24,\n    \"purchasePricePerGram\": 1000.00\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/assets",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "assets"]
+						},
+						"description": "Create a gold asset with weight and purity"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Asset - Real Estate",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Apartment in Cairo\",\n  \"assetType\": \"RealEstate\",\n  \"baseCurrency\": \"EGP\",\n  \"initialValueEGP\": 2000000.00,\n  \"currentValueEGP\": 2500000.00,\n  \"notes\": \"Investment property\",\n  \"realEstateDetail\": {\n    \"location\": \"New Cairo, Egypt\",\n    \"propertyType\": \"Apartment\",\n    \"sizeInSquareMeters\": 150.0,\n    \"yearBuilt\": 2020\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/assets",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "assets"]
+						},
+						"description": "Create a real estate asset"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Asset - Cryptocurrency",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Bitcoin Holdings\",\n  \"assetType\": \"Crypto\",\n  \"baseCurrency\": \"USD\",\n  \"initialValueEGP\": 75000.00,\n  \"currentValueEGP\": 90000.00,\n  \"notes\": \"Long-term crypto investment\",\n  \"cryptoDetail\": {\n    \"symbol\": \"BTC\",\n    \"quantity\": 0.5,\n    \"averagePurchasePrice\": 50000.00\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/assets",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "assets"]
+						},
+						"description": "Create a cryptocurrency asset"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Asset",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Apple Inc. Stock (Updated)\",\n  \"assetType\": \"Stocks\",\n  \"baseCurrency\": \"USD\",\n  \"currentValueEGP\": 60000.00,\n  \"notes\": \"Tech stock investment - price updated\",\n  \"stockDetail\": {\n    \"symbol\": \"AAPL\",\n    \"exchange\": \"NASDAQ\",\n    \"quantity\": 120,\n    \"averagePurchasePrice\": 155.00\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/assets/{{assetId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "assets", "{{assetId}}"]
+						},
+						"description": "Update asset details including current value"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Asset",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/assets/{{assetId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "assets", "{{assetId}}"]
+						},
+						"description": "Soft delete an asset (sets IsDeleted flag)"
+					},
+					"response": []
+				}
+			],
+			"description": "Asset management endpoints with support for 9 asset types"
+		},
+		{
+			"name": "Annual Goals",
+			"item": [
+				{
+					"name": "Get All Annual Goals",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/annual-goals",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "annual-goals"]
+						},
+						"description": "Get all annual goals for the current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Annual Goal by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/annual-goals/{{annualGoalId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "annual-goals", "{{annualGoalId}}"]
+						},
+						"description": "Get an annual goal by its ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Annual Goal by Year",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/annual-goals/by-year/2026",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "annual-goals", "by-year", "2026"]
+						},
+						"description": "Get annual goal for a specific year"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Annual Goal",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('annualGoalId', response.id);",
+									"    pm.test('Annual goal created successfully', () => {",
+									"        pm.expect(response.year).to.equal(2026);",
+									"        pm.expect(response.allocationGoals).to.be.an('array');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"year\": 2026,\n  \"targetTotalPortfolioValueEGP\": 500000.00,\n  \"targetProfitPercent\": 15.0,\n  \"notes\": \"First year investment target\",\n  \"allocationGoals\": [\n    { \"assetType\": \"Stocks\", \"targetAllocationPercent\": 40 },\n    { \"assetType\": \"Gold\", \"targetAllocationPercent\": 20 },\n    { \"assetType\": \"RealEstate\", \"targetAllocationPercent\": 25 },\n    { \"assetType\": \"ForeignCurrency\", \"targetAllocationPercent\": 10 },\n    { \"assetType\": \"Crypto\", \"targetAllocationPercent\": 5 }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/annual-goals",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "annual-goals"]
+						},
+						"description": "Create a new annual goal with allocation targets per asset type"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Annual Goal",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"targetTotalPortfolioValueEGP\": 750000.00,\n  \"targetProfitPercent\": 20.0,\n  \"notes\": \"Updated target after Q1 review\",\n  \"allocationGoals\": [\n    { \"assetType\": \"Stocks\", \"targetAllocationPercent\": 35 },\n    { \"assetType\": \"Gold\", \"targetAllocationPercent\": 25 },\n    { \"assetType\": \"RealEstate\", \"targetAllocationPercent\": 20 },\n    { \"assetType\": \"ForeignCurrency\", \"targetAllocationPercent\": 10 },\n    { \"assetType\": \"Crypto\", \"targetAllocationPercent\": 10 }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/annual-goals/{{annualGoalId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "annual-goals", "{{annualGoalId}}"]
+						},
+						"description": "Update an existing annual goal and its allocation targets"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Annual Goal",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/annual-goals/{{annualGoalId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "annual-goals", "{{annualGoalId}}"]
+						},
+						"description": "Delete an annual goal"
+					},
+					"response": []
+				}
+			],
+			"description": "Annual goal management with asset type allocation targets"
+		},
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Basic health check endpoint"
+					},
+					"response": []
+				},
+				{
+					"name": "Health Ready",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health/ready",
+							"host": ["{{baseUrl}}"],
+							"path": ["health", "ready"]
+						},
+						"description": "Readiness check including database connectivity"
+					},
+					"response": []
+				}
+			],
+			"description": "Health check endpoints for monitoring"
+		}
+	]
+}
