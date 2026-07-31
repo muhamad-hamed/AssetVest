@@ -219,7 +219,7 @@ public class AuthValidatorsTests
         var command = new ResetPasswordCommand
         {
             Token = "valid-token",
-            NewPassword = "NewPassword1"
+            NewPassword = "NewPassword1!"
         };
 
         var result = _resetPasswordValidator.TestValidate(command);
@@ -232,7 +232,7 @@ public class AuthValidatorsTests
         var command = new ResetPasswordCommand
         {
             Token = "",
-            NewPassword = "NewPassword1"
+            NewPassword = "NewPassword1!"
         };
 
         var result = _resetPasswordValidator.TestValidate(command);
@@ -241,10 +241,11 @@ public class AuthValidatorsTests
 
     [Theory]
     [InlineData("")]
-    [InlineData("Short1")]
-    [InlineData("newpassword1")]
-    [InlineData("NEWPASSWORD1")]
-    [InlineData("NewPassword")]
+    [InlineData("Short1!")]
+    [InlineData("newpassword1!")]
+    [InlineData("NEWPASSWORD1!")]
+    [InlineData("NewPassword!")]
+    [InlineData("NewPassword1")]
     public void ResetPassword_WithWeakPassword_Fails(string password)
     {
         var command = new ResetPasswordCommand

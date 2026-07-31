@@ -53,7 +53,7 @@ docker-compose down -v
 - **Port**: 5000 → 8080 (internal)
 - **Health Check**: http://localhost:5000/health
 - **Swagger**: http://localhost:5000/swagger (if enabled)
-- **Auto-runs migrations** on startup via `docker-entrypoint.sh`
+- **Auto-runs migrations** on startup from `Program.cs`
 - **Depends on**: PostgreSQL (waits for healthy status)
 
 ### PostgreSQL Service (`assetvest-postgres`)
@@ -369,7 +369,6 @@ For production:
 AssetVest/
 ├── Dockerfile                   # Multi-stage .NET build
 ├── docker-compose.yml           # Service definitions
-├── docker-entrypoint.sh         # Startup script with migrations
 ├── .dockerignore               # Optimize build context
 └── docs/
     └── DOCKER.md               # This file
