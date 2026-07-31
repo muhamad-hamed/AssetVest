@@ -6,5 +6,6 @@ public enum MutualFundType
     Stocks = 2,
     Gold = 3,
     RealEstate = 4,
-    Mixed = 5
+    Mixed = 5,
+    Silver = 6
 }
