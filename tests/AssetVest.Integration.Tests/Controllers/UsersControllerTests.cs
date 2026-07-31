@@ -18,53 +18,66 @@ public class UsersControllerTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
-    public async Task GetAll_ReturnsOkWithUsers()
+    public async Task GetCurrentUser_WithoutToken_ReturnsUnauthorized()
     {
         // Act
-        var response = await _client.GetAsync("/api/v1/users");
+        var response = await _client.GetAsync("/api/v1/users/me");
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        
-        var users = await response.Content.ReadFromJsonAsync<List<UserDto>>();
-        users.Should().NotBeNull();
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
-    public async Task Create_WithValidRequest_ReturnsCreated()
+    public async Task GetById_WithoutToken_ReturnsUnauthorized()
+    {
+        // Act
+        var response = await _client.GetAsync($"/api/v1/users/{Guid.NewGuid()}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task UpdateCurrentUser_WithoutToken_ReturnsUnauthorized()
     {
         // Arrange
-        var request = new CreateUserRequest
+        var request = new UpdateUserRequest
         {
             FirstName = "Integration",
             LastName = "Test",
-            Email = $"integration.test.{Guid.NewGuid()}@example.com",
-            Password = "SecurePassword123!"
+            Email = "integration.test@example.com"
         };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/v1/users", request);
+        var response = await _client.PutAsJsonAsync("/api/v1/users/me", request);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        
-        var createdUser = await response.Content.ReadFromJsonAsync<UserDto>();
-        createdUser.Should().NotBeNull();
-        createdUser!.FirstName.Should().Be("Integration");
-        createdUser.LastName.Should().Be("Test");
-        createdUser.Email.Should().Be(request.Email);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
-    public async Task GetById_WhenUserDoesNotExist_ReturnsNotFound()
+    public async Task ChangeCurrentUserPassword_WithoutToken_ReturnsUnauthorized()
     {
         // Arrange
-        var nonExistentId = Guid.NewGuid();
+        var request = new ChangePasswordRequest
+        {
+            CurrentPassword = "OldPassword1!",
+            NewPassword = "NewPassword1!"
+        };
 
         // Act
-        var response = await _client.GetAsync($"/api/v1/users/{nonExistentId}");
+        var response = await _client.PostAsJsonAsync("/api/v1/users/me/change-password", request);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ListAndLookupRoutes_AreNotExposed()
+    {
+        // Enumeration routes were removed; no admin role exists to gate them.
+        var byEmail = await _client.GetAsync("/api/v1/users/by-email/someone@example.com");
+
+        byEmail.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }

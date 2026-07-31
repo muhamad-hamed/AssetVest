@@ -5,9 +5,8 @@ using AssetVest.Application.Commands.Users.DeleteUser;
 using AssetVest.Application.Commands.Users.ToggleActiveStatus;
 using AssetVest.Application.Commands.Users.UpdateUser;
 using AssetVest.Application.DTOs.Users;
-using AssetVest.Application.Queries.Users.GetAllUsers;
+using AssetVest.Application.Ports;
 using AssetVest.Application.Queries.Users.GetCurrentUser;
-using AssetVest.Application.Queries.Users.GetUserByEmail;
 using AssetVest.Application.Queries.Users.GetUserById;
 using FluentValidation;
 using MediatR;
@@ -20,28 +19,20 @@ namespace AssetVest.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
-public class UsersController(ISender sender) : ControllerBase
+public class UsersController(ISender sender, ICurrentUserService currentUser) : ControllerBase
 {
     /// <summary>
-    /// Get all users
-    /// </summary>
-    [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<UserDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<UserDto>>> GetAll(CancellationToken cancellationToken)
-    {
-        var query = new GetAllUsersQuery();
-        var users = await sender.Send(query, cancellationToken);
-        return Ok(users);
-    }
-
-    /// <summary>
-    /// Get user by ID
+    /// Get user by ID. Callers may only read their own record.
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
+        if (currentUser.UserId != id)
+            return Forbid();
+
         var query = new GetUserByIdQuery(id);
         var user = await sender.Send(query, cancellationToken);
 
@@ -61,23 +52,6 @@ public class UsersController(ISender sender) : ControllerBase
     public async Task<ActionResult<UserDto>> GetCurrentUser(CancellationToken cancellationToken)
     {
         var query = new GetCurrentUserQuery();
-        var user = await sender.Send(query, cancellationToken);
-
-        if (user is null)
-            return NotFound();
-
-        return Ok(user);
-    }
-
-    /// <summary>
-    /// Get user by email
-    /// </summary>
-    [HttpGet("by-email/{email}")]
-    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<UserDto>> GetByEmail(string email, CancellationToken cancellationToken)
-    {
-        var query = new GetUserByEmailQuery(email);
         var user = await sender.Send(query, cancellationToken);
 
         if (user is null)
@@ -128,19 +102,43 @@ public class UsersController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing user
+    /// Update the authenticated user's profile
+    /// </summary>
+    [HttpPut("me")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserDto>> UpdateCurrentUser([FromBody] UpdateUserRequest request, CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+            return Unauthorized();
+
+        return await UpdateUserAsync(userId, request, cancellationToken);
+    }
+
+    /// <summary>
+    /// Update an existing user. Callers may only update their own record.
     /// </summary>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserDto>> Update(Guid id, [FromBody] UpdateUserRequest request, CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId != id)
+            return Forbid();
+
+        return await UpdateUserAsync(id, request, cancellationToken);
+    }
+
+    private async Task<ActionResult<UserDto>> UpdateUserAsync(Guid userId, UpdateUserRequest request, CancellationToken cancellationToken)
     {
         try
         {
             var command = new UpdateUserCommand
             {
-                UserId = id,
+                UserId = userId,
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 Email = request.Email
@@ -174,13 +172,17 @@ public class UsersController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    /// Delete a user (soft delete)
+    /// Delete a user (soft delete). Callers may only delete their own record.
     /// </summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
+        if (currentUser.UserId != id)
+            return Forbid();
+
         var command = new DeleteUserCommand(id);
         var deleted = await sender.Send(command, cancellationToken);
 
@@ -191,19 +193,43 @@ public class UsersController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    /// Change user password
+    /// Change the authenticated user's password
+    /// </summary>
+    [HttpPost("me/change-password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangeCurrentUserPassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+            return Unauthorized();
+
+        return await ChangePasswordAsync(userId, request, cancellationToken);
+    }
+
+    /// <summary>
+    /// Change user password. Callers may only change their own password.
     /// </summary>
     [HttpPost("{id:guid}/change-password")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId != id)
+            return Forbid();
+
+        return await ChangePasswordAsync(id, request, cancellationToken);
+    }
+
+    private async Task<IActionResult> ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken cancellationToken)
     {
         try
         {
             var command = new ChangePasswordCommand
             {
-                UserId = id,
+                UserId = userId,
                 CurrentPassword = request.CurrentPassword,
                 NewPassword = request.NewPassword
             };
@@ -236,13 +262,17 @@ public class UsersController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    /// Toggle user active status
+    /// Toggle user active status. Callers may only change their own status.
     /// </summary>
     [HttpPost("{id:guid}/toggle-active")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ToggleActive(Guid id, CancellationToken cancellationToken)
     {
+        if (currentUser.UserId != id)
+            return Forbid();
+
         var command = new ToggleUserActiveStatusCommand(id);
         var success = await sender.Send(command, cancellationToken);
 
