@@ -4,6 +4,7 @@ using AssetVest.Application.Commands.Auth.ForgotPassword;
 using AssetVest.Application.Commands.Auth.Login;
 using AssetVest.Application.Commands.Auth.Register;
 using AssetVest.Application.Commands.Auth.ResetPassword;
+using AssetVest.Application.Commands.Users.ChangePassword;
 using AssetVest.Application.DTOs.AnnualGoals;
 using AssetVest.Application.DTOs.Assets;
 using AssetVest.Domain.Enums;
@@ -255,6 +256,47 @@ public class AuthValidatorsTests
         };
 
         var result = _resetPasswordValidator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor(x => x.NewPassword);
+    }
+
+    #endregion
+
+    #region ChangePasswordCommandValidator
+
+    private readonly ChangePasswordCommandValidator _changePasswordValidator = new();
+
+    [Fact]
+    public void ChangePassword_WithValidData_PassesValidation()
+    {
+        var command = new ChangePasswordCommand
+        {
+            UserId = Guid.NewGuid(),
+            CurrentPassword = "OldPassword1!",
+            NewPassword = "NewPassword1!"
+        };
+
+        var result = _changePasswordValidator.TestValidate(command);
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Short1!")]
+    [InlineData("newpassword1!")]
+    [InlineData("NEWPASSWORD1!")]
+    [InlineData("NewPassword!")]
+    [InlineData("NewPassword1")]
+    [InlineData("aaaaaaaa")]
+    public void ChangePassword_WithWeakPassword_Fails(string password)
+    {
+        var command = new ChangePasswordCommand
+        {
+            UserId = Guid.NewGuid(),
+            CurrentPassword = "OldPassword1!",
+            NewPassword = password
+        };
+
+        var result = _changePasswordValidator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(x => x.NewPassword);
     }
 

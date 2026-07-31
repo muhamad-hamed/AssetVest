@@ -1,3 +1,4 @@
+using AssetVest.Application.Common;
 using FluentValidation;
 
 namespace AssetVest.Application.Commands.Users.CreateUser;
@@ -20,7 +21,6 @@ public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
             .MaximumLength(256).WithMessage("Email cannot exceed 256 characters");
 
         RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters long");
+            .Password();
     }
 }

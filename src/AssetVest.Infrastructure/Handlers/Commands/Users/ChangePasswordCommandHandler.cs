@@ -1,6 +1,7 @@
 using AssetVest.Application.Commands.Users.ChangePassword;
 using AssetVest.Infrastructure.Persistence;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AssetVest.Infrastructure.Handlers.Commands.Users;
 
@@ -20,6 +21,17 @@ public class ChangePasswordCommandHandler(ApplicationDbContext context) : IReque
         }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+        // Existing sessions must not survive a password change
+        var activeTokens = await context.RefreshTokens
+            .Where(rt => rt.UserId == user.Id && rt.RevokedAt == null)
+            .ToListAsync(cancellationToken);
+
+        foreach (var refreshToken in activeTokens)
+        {
+            refreshToken.RevokedAt = DateTime.UtcNow;
+        }
+
         await context.SaveChangesAsync(cancellationToken);
 
         return true;

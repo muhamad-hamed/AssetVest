@@ -1,3 +1,4 @@
+using AssetVest.Application.Commands.Users.ChangePassword;
 using AssetVest.Application.Commands.Users.CreateUser;
 using AssetVest.Application.Commands.Users.DeleteUser;
 using AssetVest.Application.Commands.Users.ToggleActiveStatus;
@@ -6,6 +7,7 @@ using AssetVest.Application.Queries.Users.GetAllUsers;
 using AssetVest.Application.Queries.Users.GetUserByEmail;
 using AssetVest.Application.Queries.Users.GetUserById;
 using AssetVest.Domain.Entities;
+using ChangePasswordHandler = AssetVest.Infrastructure.Handlers.Commands.Users.ChangePasswordCommandHandler;
 using CreateUserHandler = AssetVest.Infrastructure.Handlers.Commands.Users.CreateUserCommandHandler;
 using UpdateUserHandler = AssetVest.Infrastructure.Handlers.Commands.Users.UpdateUserCommandHandler;
 using DeleteUserHandler = AssetVest.Infrastructure.Handlers.Commands.Users.DeleteUserCommandHandler;
@@ -301,5 +303,79 @@ public class UserHandlersTests
         await handler.Handle(command, CancellationToken.None);
         var toggledBackUser = await _context.Users.FindAsync(user.Id);
         toggledBackUser!.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ChangePasswordHandler_WithCorrectCurrentPassword_UpdatesHashAndRevokesSessions()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _context.Users.Add(new User
+        {
+            Id = userId,
+            FirstName = "Change",
+            LastName = "Password",
+            Email = "change.password@example.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("OldPassword1!"),
+            IsActive = true
+        });
+        _context.RefreshTokens.Add(new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            TokenHash = "active-session-hash",
+            ExpiresAt = DateTime.UtcNow.AddDays(5),
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        });
+        await _context.SaveChangesAsync();
+
+        var handler = new ChangePasswordHandler(_context);
+        var command = new ChangePasswordCommand
+        {
+            UserId = userId,
+            CurrentPassword = "OldPassword1!",
+            NewPassword = "NewPassword1!"
+        };
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().BeTrue();
+
+        var user = await _context.Users.FindAsync(userId);
+        BCrypt.Net.BCrypt.Verify("NewPassword1!", user!.PasswordHash).Should().BeTrue();
+
+        var refreshToken = await _context.RefreshTokens.FirstAsync(rt => rt.UserId == userId);
+        refreshToken.RevokedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ChangePasswordHandler_WithWrongCurrentPassword_Throws()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _context.Users.Add(new User
+        {
+            Id = userId,
+            FirstName = "Wrong",
+            LastName = "Password",
+            Email = "wrong.password@example.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("OldPassword1!"),
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+
+        var handler = new ChangePasswordHandler(_context);
+        var command = new ChangePasswordCommand
+        {
+            UserId = userId,
+            CurrentPassword = "NotMyPassword1!",
+            NewPassword = "NewPassword1!"
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.Handle(command, CancellationToken.None));
     }
 }
