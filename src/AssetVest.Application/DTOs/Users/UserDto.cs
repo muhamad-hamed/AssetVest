@@ -7,6 +7,7 @@ public record UserDto
     public required string LastName { get; init; }
     public required string Email { get; init; }
     public required bool IsActive { get; init; }
+    public string? AvatarUrl { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

@@ -27,6 +27,7 @@ public class GetCurrentUserQueryHandler(ApplicationDbContext context, ICurrentUs
                 LastName = u.LastName,
                 Email = u.Email,
                 IsActive = u.IsActive,
+                AvatarUrl = u.AvatarUrl,
                 CreatedAt = u.CreatedAt,
                 UpdatedAt = u.UpdatedAt
             })

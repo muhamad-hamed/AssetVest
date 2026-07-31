@@ -16,6 +16,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Email).HasMaxLength(256).IsRequired();
         builder.Property(u => u.PasswordHash).IsRequired();
         builder.Property(u => u.IsActive).HasDefaultValue(true);
+        builder.Property(u => u.AvatarUrl).HasMaxLength(512);
 
         // SHA-256 hex digest
         builder.Property(u => u.PasswordResetTokenHash).HasMaxLength(64);

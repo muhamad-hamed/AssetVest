@@ -40,6 +40,7 @@ public class UpdateUserCommandHandler(ApplicationDbContext context) : IRequestHa
             LastName = user.LastName,
             Email = user.Email,
             IsActive = user.IsActive,
+            AvatarUrl = user.AvatarUrl,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };

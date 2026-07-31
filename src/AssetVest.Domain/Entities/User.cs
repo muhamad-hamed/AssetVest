@@ -10,6 +10,7 @@ public class User : AuditableEntity
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public string? AvatarUrl { get; set; }
 
     // Forgot-password reset token (SHA-256 hash stored, plain token sent to user)
     public string? PasswordResetTokenHash { get; set; }
