@@ -1,8 +1,10 @@
 using Asp.Versioning;
+using AssetVest.Application.Commands.Auth.ForgotPassword;
 using AssetVest.Application.Commands.Auth.Login;
 using AssetVest.Application.Commands.Auth.Logout;
 using AssetVest.Application.Commands.Auth.RefreshToken;
 using AssetVest.Application.Commands.Auth.Register;
+using AssetVest.Application.Commands.Auth.ResetPassword;
 using AssetVest.Application.DTOs.Auth;
 using FluentValidation;
 using MediatR;
@@ -133,6 +135,87 @@ public class AuthController(ISender sender) : ControllerBase
                 Title = "Token Refresh Failed",
                 Detail = ex.Message,
                 Status = StatusCodes.Status401Unauthorized
+            });
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = string.Join(", ", ex.Errors.Select(e => e.ErrorMessage)),
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+    }
+
+    /// <summary>
+    /// Request a password reset token for the given email address.
+    /// The token is returned in the response body for development purposes;
+    /// in production it would be delivered via email.
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [EnableRateLimiting("auth")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var command = new ForgotPasswordCommand { Email = request.Email };
+            var result = await sender.Send(command, cancellationToken);
+
+            // Return a generic message even when the email is not found to
+            // prevent user enumeration. The token is included only in dev.
+            if (string.IsNullOrEmpty(result.ResetToken))
+                return Ok(new { message = "If that email exists, a reset link has been sent." });
+
+            return Ok(new
+            {
+                message = "Password reset token generated. Use it within 30 minutes.",
+                resetToken = result.ResetToken,
+                expiresAt = result.ExpiresAt
+            });
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = string.Join(", ", ex.Errors.Select(e => e.ErrorMessage)),
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+    }
+
+    /// <summary>
+    /// Reset password using a valid reset token obtained from forgot-password
+    /// </summary>
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    [EnableRateLimiting("auth")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var command = new ResetPasswordCommand
+            {
+                Token = request.Token,
+                NewPassword = request.NewPassword
+            };
+
+            await sender.Send(command, cancellationToken);
+            return Ok(new { message = "Password has been reset successfully. Please log in with your new password." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Reset Failed",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest
             });
         }
         catch (ValidationException ex)

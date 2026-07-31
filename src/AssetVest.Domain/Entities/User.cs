@@ -11,6 +11,10 @@ public class User : AuditableEntity
     public string PasswordHash { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
 
+    // Forgot-password reset token (SHA-256 hash stored, plain token sent to user)
+    public string? PasswordResetTokenHash { get; set; }
+    public DateTime? PasswordResetTokenExpiresAt { get; set; }
+
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<Asset> Assets { get; set; } = [];
     public ICollection<AnnualGoal> AnnualGoals { get; set; } = [];
