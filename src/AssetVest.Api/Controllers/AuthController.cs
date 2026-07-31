@@ -20,7 +20,7 @@ namespace AssetVest.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class AuthController(ISender sender) : ControllerBase
+public class AuthController(ISender sender, IWebHostEnvironment environment) : ControllerBase
 {
     /// <summary>
     /// Register a new user account
@@ -150,8 +150,8 @@ public class AuthController(ISender sender) : ControllerBase
 
     /// <summary>
     /// Request a password reset token for the given email address.
-    /// The token is returned in the response body for development purposes;
-    /// in production it would be delivered via email.
+    /// The token is returned in the response body only in the Development
+    /// environment; otherwise it is delivered out of band.
     /// </summary>
     [HttpPost("forgot-password")]
     [AllowAnonymous]
@@ -167,7 +167,7 @@ public class AuthController(ISender sender) : ControllerBase
 
             // Return a generic message even when the email is not found to
             // prevent user enumeration. The token is included only in dev.
-            if (string.IsNullOrEmpty(result.ResetToken))
+            if (string.IsNullOrEmpty(result.ResetToken) || !environment.IsDevelopment())
                 return Ok(new { message = "If that email exists, a reset link has been sent." });
 
             return Ok(new

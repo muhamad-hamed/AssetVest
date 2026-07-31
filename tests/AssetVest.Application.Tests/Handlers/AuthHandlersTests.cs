@@ -1,6 +1,10 @@
+using System.Security.Cryptography;
+using System.Text;
+using AssetVest.Application.Commands.Auth.ForgotPassword;
 using AssetVest.Application.Commands.Auth.Login;
 using AssetVest.Application.Commands.Auth.RefreshToken;
 using AssetVest.Application.Commands.Auth.Register;
+using AssetVest.Application.Commands.Auth.ResetPassword;
 using AssetVest.Application.Ports;
 using AssetVest.Domain.Entities;
 using AssetVest.Infrastructure.Handlers.Commands.Auth;
@@ -474,6 +478,239 @@ public class AuthHandlersTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => handler.Handle(command, CancellationToken.None));
+    }
+
+    #endregion
+
+    #region ForgotPasswordCommandHandler
+
+    private static string HashToken(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    private async Task<Guid> SeedUserAsync(string email, bool isActive = true, string password = "OldPassword1")
+    {
+        var userId = Guid.NewGuid();
+        _context.Users.Add(new User
+        {
+            Id = userId,
+            FirstName = "Test",
+            LastName = "User",
+            Email = email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            IsActive = isActive
+        });
+        await _context.SaveChangesAsync();
+        return userId;
+    }
+
+    [Fact]
+    public async Task ForgotPassword_WithUnknownEmail_ReturnsEmptyToken()
+    {
+        // Arrange
+        var handler = new ForgotPasswordCommandHandler(_context);
+        var command = new ForgotPasswordCommand { Email = "missing@example.com" };
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.ResetToken.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ForgotPassword_WithInactiveUser_ReturnsEmptyToken()
+    {
+        // Arrange
+        await SeedUserAsync("inactive.forgot@example.com", isActive: false);
+        var handler = new ForgotPasswordCommandHandler(_context);
+        var command = new ForgotPasswordCommand { Email = "inactive.forgot@example.com" };
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.ResetToken.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ForgotPassword_WithActiveUser_StoresHashedTokenAndExpiry()
+    {
+        // Arrange
+        await SeedUserAsync("forgot@example.com");
+        var handler = new ForgotPasswordCommandHandler(_context);
+        var command = new ForgotPasswordCommand { Email = "forgot@example.com" };
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.ResetToken.Should().NotBeNullOrEmpty();
+        result.ExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddMinutes(30), TimeSpan.FromMinutes(1));
+
+        var user = await _context.Users.FirstAsync(u => u.Email == "forgot@example.com");
+        user.PasswordResetTokenHash.Should().Be(HashToken(result.ResetToken));
+        user.PasswordResetTokenHash.Should().NotBe(result.ResetToken);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_ReturnsUrlSafeToken()
+    {
+        // Arrange
+        await SeedUserAsync("urlsafe@example.com");
+        var handler = new ForgotPasswordCommandHandler(_context);
+        var command = new ForgotPasswordCommand { Email = "urlsafe@example.com" };
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.ResetToken.Should().NotContain("+").And.NotContain("/").And.NotContain("=");
+    }
+
+    [Fact]
+    public async Task ForgotPassword_IssuedTwice_InvalidatesPreviousToken()
+    {
+        // Arrange
+        await SeedUserAsync("reissue@example.com");
+        var handler = new ForgotPasswordCommandHandler(_context);
+        var command = new ForgotPasswordCommand { Email = "reissue@example.com" };
+
+        // Act
+        var first = await handler.Handle(command, CancellationToken.None);
+        var second = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        var user = await _context.Users.FirstAsync(u => u.Email == "reissue@example.com");
+        user.PasswordResetTokenHash.Should().Be(HashToken(second.ResetToken));
+        user.PasswordResetTokenHash.Should().NotBe(HashToken(first.ResetToken));
+    }
+
+    #endregion
+
+    #region ResetPasswordCommandHandler
+
+    [Fact]
+    public async Task ResetPassword_WithValidToken_UpdatesPasswordAndClearsToken()
+    {
+        // Arrange
+        const string token = "valid-reset-token";
+        var userId = await SeedUserAsync("reset@example.com");
+        var seeded = await _context.Users.FirstAsync(u => u.Id == userId);
+        seeded.PasswordResetTokenHash = HashToken(token);
+        seeded.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
+        await _context.SaveChangesAsync();
+
+        var handler = new ResetPasswordCommandHandler(_context);
+        var command = new ResetPasswordCommand { Token = token, NewPassword = "NewPassword1" };
+
+        // Act
+        await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        var user = await _context.Users.FirstAsync(u => u.Id == userId);
+        BCrypt.Net.BCrypt.Verify("NewPassword1", user.PasswordHash).Should().BeTrue();
+        user.PasswordResetTokenHash.Should().BeNull();
+        user.PasswordResetTokenExpiresAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ResetPassword_RevokesActiveRefreshTokens()
+    {
+        // Arrange
+        const string token = "revoke-reset-token";
+        var userId = await SeedUserAsync("revoke@example.com");
+        var seeded = await _context.Users.FirstAsync(u => u.Id == userId);
+        seeded.PasswordResetTokenHash = HashToken(token);
+        seeded.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
+        _context.RefreshTokens.Add(new Domain.Entities.RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            TokenHash = "active-session-hash",
+            ExpiresAt = DateTime.UtcNow.AddDays(5),
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        });
+        await _context.SaveChangesAsync();
+
+        var handler = new ResetPasswordCommandHandler(_context);
+        var command = new ResetPasswordCommand { Token = token, NewPassword = "NewPassword1" };
+
+        // Act
+        await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        var refreshToken = await _context.RefreshTokens.FirstAsync(rt => rt.UserId == userId);
+        refreshToken.RevokedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithUnknownToken_Throws()
+    {
+        // Arrange
+        var handler = new ResetPasswordCommandHandler(_context);
+        var command = new ResetPasswordCommand { Token = "does-not-exist", NewPassword = "NewPassword1" };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.Handle(command, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithExpiredToken_Throws()
+    {
+        // Arrange
+        const string token = "expired-reset-token";
+        var userId = await SeedUserAsync("expired@example.com");
+        var seeded = await _context.Users.FirstAsync(u => u.Id == userId);
+        seeded.PasswordResetTokenHash = HashToken(token);
+        seeded.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        await _context.SaveChangesAsync();
+
+        var handler = new ResetPasswordCommandHandler(_context);
+        var command = new ResetPasswordCommand { Token = token, NewPassword = "NewPassword1" };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.Handle(command, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithInactiveUser_Throws()
+    {
+        // Arrange
+        const string token = "inactive-reset-token";
+        var userId = await SeedUserAsync("inactive.reset@example.com", isActive: false);
+        var seeded = await _context.Users.FirstAsync(u => u.Id == userId);
+        seeded.PasswordResetTokenHash = HashToken(token);
+        seeded.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
+        await _context.SaveChangesAsync();
+
+        var handler = new ResetPasswordCommandHandler(_context);
+        var command = new ResetPasswordCommand { Token = token, NewPassword = "NewPassword1" };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.Handle(command, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ResetPassword_TokenCannotBeReused()
+    {
+        // Arrange
+        const string token = "single-use-token";
+        var userId = await SeedUserAsync("singleuse@example.com");
+        var seeded = await _context.Users.FirstAsync(u => u.Id == userId);
+        seeded.PasswordResetTokenHash = HashToken(token);
+        seeded.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
+        await _context.SaveChangesAsync();
+
+        var handler = new ResetPasswordCommandHandler(_context);
+        var command = new ResetPasswordCommand { Token = token, NewPassword = "NewPassword1" };
+        await handler.Handle(command, CancellationToken.None);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
             () => handler.Handle(command, CancellationToken.None));
     }
 

@@ -17,7 +17,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PasswordHash).IsRequired();
         builder.Property(u => u.IsActive).HasDefaultValue(true);
 
+        // SHA-256 hex digest
+        builder.Property(u => u.PasswordResetTokenHash).HasMaxLength(64);
+
         builder.HasIndex(u => u.Email).IsUnique();
+        builder.HasIndex(u => u.PasswordResetTokenHash);
 
         builder.HasMany(u => u.RefreshTokens)
             .WithOne(r => r.User)

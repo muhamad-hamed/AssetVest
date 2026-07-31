@@ -17,7 +17,8 @@ public class ResetPasswordCommandHandler(ApplicationDbContext context)
         var user = await context.Users
             .FirstOrDefaultAsync(u =>
                 u.PasswordResetTokenHash == tokenHash &&
-                !u.IsDeleted,
+                !u.IsDeleted &&
+                u.IsActive,
                 cancellationToken);
 
         if (user is null)
@@ -30,6 +31,16 @@ public class ResetPasswordCommandHandler(ApplicationDbContext context)
         user.PasswordResetTokenHash = null;
         user.PasswordResetTokenExpiresAt = null;
         user.UpdatedAt = DateTime.UtcNow;
+
+        // Existing sessions must not survive a password reset
+        var activeTokens = await context.RefreshTokens
+            .Where(rt => rt.UserId == user.Id && rt.RevokedAt == null)
+            .ToListAsync(cancellationToken);
+
+        foreach (var refreshToken in activeTokens)
+        {
+            refreshToken.RevokedAt = DateTime.UtcNow;
+        }
 
         await context.SaveChangesAsync(cancellationToken);
 

@@ -1,7 +1,9 @@
 using AssetVest.Application.Commands.AnnualGoals.CreateAnnualGoal;
 using AssetVest.Application.Commands.Assets.CreateAsset;
+using AssetVest.Application.Commands.Auth.ForgotPassword;
 using AssetVest.Application.Commands.Auth.Login;
 using AssetVest.Application.Commands.Auth.Register;
+using AssetVest.Application.Commands.Auth.ResetPassword;
 using AssetVest.Application.DTOs.AnnualGoals;
 using AssetVest.Application.DTOs.Assets;
 using AssetVest.Domain.Enums;
@@ -177,6 +179,82 @@ public class AuthValidatorsTests
 
         var result = _loginValidator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(x => x.Password);
+    }
+
+    #endregion
+
+    #region ForgotPasswordCommandValidator
+
+    private readonly ForgotPasswordCommandValidator _forgotPasswordValidator = new();
+
+    [Fact]
+    public void ForgotPassword_WithValidEmail_PassesValidation()
+    {
+        var command = new ForgotPasswordCommand { Email = "user@example.com" };
+
+        var result = _forgotPasswordValidator.TestValidate(command);
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("not-an-email")]
+    public void ForgotPassword_WithInvalidEmail_Fails(string email)
+    {
+        var command = new ForgotPasswordCommand { Email = email };
+
+        var result = _forgotPasswordValidator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor(x => x.Email);
+    }
+
+    #endregion
+
+    #region ResetPasswordCommandValidator
+
+    private readonly ResetPasswordCommandValidator _resetPasswordValidator = new();
+
+    [Fact]
+    public void ResetPassword_WithValidData_PassesValidation()
+    {
+        var command = new ResetPasswordCommand
+        {
+            Token = "valid-token",
+            NewPassword = "NewPassword1"
+        };
+
+        var result = _resetPasswordValidator.TestValidate(command);
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void ResetPassword_WithEmptyToken_Fails()
+    {
+        var command = new ResetPasswordCommand
+        {
+            Token = "",
+            NewPassword = "NewPassword1"
+        };
+
+        var result = _resetPasswordValidator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor(x => x.Token);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Short1")]
+    [InlineData("newpassword1")]
+    [InlineData("NEWPASSWORD1")]
+    [InlineData("NewPassword")]
+    public void ResetPassword_WithWeakPassword_Fails(string password)
+    {
+        var command = new ResetPasswordCommand
+        {
+            Token = "valid-token",
+            NewPassword = password
+        };
+
+        var result = _resetPasswordValidator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor(x => x.NewPassword);
     }
 
     #endregion

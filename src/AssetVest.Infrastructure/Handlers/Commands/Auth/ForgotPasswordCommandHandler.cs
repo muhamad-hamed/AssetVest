@@ -16,7 +16,7 @@ public class ForgotPasswordCommandHandler(ApplicationDbContext context)
     {
         // Always return a result to avoid user enumeration attacks
         var user = await context.Users
-            .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted && u.IsActive, cancellationToken);
 
         if (user is null)
         {
